@@ -36,7 +36,10 @@ class SocketSingleton {
           try {
             const token = await AsyncStorage.getItem('token');
             if (token) {
-              this.socket.emit('rider-login', token);
+              this.socket?.emit('rider-login', token);
+              console.log("Emitted socket login")
+            } else {
+              console.error('Token not found');
             }
           } catch (error) {
             console.error('Failed to retrieve token:', error);
