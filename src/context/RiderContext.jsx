@@ -8,7 +8,8 @@ const RiderContext = createContext();
 
 export const RiderProvider = ({ children }) => {
   const [location, setLocation] = useState(null);
-  const apiUrl="https://ride-74l5.onrender.com"
+  // const apiUrl="https://ride-74l5.onrender.com"
+  const apiUrl="http://192.168.1.80:8001"
   const [rider,setRider]=useState(null)
   
   const requestLocationPermission = async () => {

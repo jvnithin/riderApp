@@ -1,8 +1,6 @@
 // src/socket.js
-import { useContext } from 'react';
 import { io } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
 
 class SocketSingleton {
   constructor() {
@@ -10,32 +8,51 @@ class SocketSingleton {
       this.socket = null;
       SocketSingleton.instance = this;
     }
-    
     return SocketSingleton.instance;
   }
-  
-  async clearSocket(){
-    this.socket.disconnect();
-    this.socket = null;
+
+  async clearSocket() {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
   }
+
   async getSocket(role) {
-    // const {apiUrl} = useContext(MapContext);
     if (!this.socket) {
-      this.socket = io(`https://ride-74l5.onrender.com`, {
+      console.log('Creating socket connection');
+
+      this.socket = io("http://192.168.1.80:8001", {
+        transports: ['websocket', 'polling'], 
         autoConnect: true,
-        // auth: { token: 'your-auth-token' }, // optional
       });
-      
-      if(role==="rider"){
-        const token =await AsyncStorage.getItem("token");
-        this.socket.emit('driver-login',token);
-      }
+
+      // Handle connection success
+      this.socket.on("connect", async () => {
+        console.log("✅ Socket connected!", this.socket.id);
+        console.log(role)
+        if (role === 'rider') {
+          console.log("Emitting 'rider-login' event");
+          try {
+            const token = await AsyncStorage.getItem('token');
+            if (token) {
+              this.socket.emit('rider-login', token);
+            }
+          } catch (error) {
+            console.error('Failed to retrieve token:', error);
+          }
+        }
+      });
+
+      // Handle connection errors
+      this.socket.on("connect_error", (err) => {
+        console.error("❌ Socket connection error:", err.message);
+      });
     }
 
     return this.socket;
   }
 }
 
-// Export a single shared instance
 const socketInstance = new SocketSingleton();
 export default socketInstance;

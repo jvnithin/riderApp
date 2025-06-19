@@ -19,21 +19,19 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import AntIcon from 'react-native-vector-icons/AntDesign';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import socketInstance from '../services/socketService';
-import { scrollTo } from 'react-native-reanimated';
 import axios from 'axios';
 import RiderContext from '../context/RiderContext';
 import { AppState } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
 const DriverHomePage = ({ navigation }) => {
   const { apiUrl, rider, location } = useContext(RiderContext);
   const [driverLocation, setDriverLocation] = useState(null);
-  const [customerLocation, setCustomerLocation] = useState(null);
+
   const [assignedRides, setAssignedRides] = useState([]);
   const [currentRide, setCurrentRide] = useState(null);
-  const [driverStatus, setDriverStatus] = useState('available'); // available, busy, offline
+
   const [refreshing, setRefreshing] = useState(false);
   const [isLocationEnabled, setIsLocationEnabled] = useState(false);
   const [showNavigationView, setShowNavigationView] = useState(false);
@@ -48,13 +46,20 @@ const DriverHomePage = ({ navigation }) => {
       });
       await setAssignedRides(response.data);
       // console.log(response.data);
-      setCurrentRide(assignedRides[0]);
+      setCurrentRide(response.data[0]);
     } catch (error) {
       console.log(error);
     }
   };
+/**
+ * Asynchronously retrieves and connects the socket instance for the rider role.
+ * Sets the connected socket to the state.
+ */
+
   const getSocketInstance = async () => {
     const socket = await socketInstance.getSocket('rider');
+    console.log("Connection established",socket);
+    await socket.connect();
     setSocket(socket);
   };
   const navigateIfNoToken = async () => {
@@ -94,14 +99,15 @@ const DriverHomePage = ({ navigation }) => {
 
   useEffect(() => {
     const handleAppStateChange = nextAppState => {
-      // console.log('Calling handleAppStateChange: ', nextAppState);
+      console.log('Calling handleAppStateChange: ', nextAppState);
       if (
         appState.current.match(/active/) &&
         nextAppState.match(/inactive|background/)
       ) {
         // App goes to background: disconnect socket
-        if (socket && socket.connected) {
+        if (socket) {
           // socket.disconnect();
+          console.log("disconnecting socket")
           socketInstance.clearSocket();
         }
       } else if (
@@ -110,6 +116,7 @@ const DriverHomePage = ({ navigation }) => {
       ) {
         // App comes to foreground: reconnect socket
         if (socket && !socket.connected) {
+          console.log("Connecting socket")
           getSocketInstance();
           // socket.connect();
         }
@@ -184,10 +191,57 @@ const DriverHomePage = ({ navigation }) => {
         enableHighAccuracy: true,
         timeout: 15000,
         maximumAge: 10000,
-        distanceFilter: 0.5, // Update every 10 meters
+        distanceFilter: 1, // Update every 10 meters
       },
     );
   };
+  //   let lastSentLocation = null;
+  //   const minDistanceThreshold = 5; // meters
+
+  //   locationWatchId.current = Geolocation.watchPosition(
+  //     async position => {
+  //       const { latitude, longitude } = position.coords;
+  //       const newDriverLocation = { lat: latitude, lng: longitude };
+
+  //       // Only update if moved significantly to reduce refresh frequency
+  //       if (lastSentLocation) {
+  //         const distance = calculateDistance(
+  //           lastSentLocation.lat, lastSentLocation.lng,
+  //           latitude, longitude
+  //         );
+  //         if (distance < minDistanceThreshold) return;
+  //       }
+
+  //       setDriverLocation(newDriverLocation);
+  //       lastSentLocation = newDriverLocation;
+
+  //       // Send optimized update to WebView
+  //       if (webViewRef.current) {
+  //         webViewRef.current.postMessage(
+  //           JSON.stringify({
+  //             type: 'updateDriverLocation',
+  //             location: newDriverLocation,
+  //             timestamp: Date.now()
+  //           })
+  //         );
+  //       }
+
+  //       updateDriverLocationOnServer(newDriverLocation);
+  //     },
+  //     error => {
+  //       console.log('Location error:', error);
+  //       Alert.alert('Error', 'Unable to get your location. Please enable GPS.');
+  //     },
+  //     {
+  //       enableHighAccuracy: true,
+  //       timeout: 15000,
+  //       maximumAge: 5000, // Increased cache time
+  //       distanceFilter: 3, // Reduced sensitivity for smoother updates
+  //     }
+  //   );
+  // };
+
+  // Helper function to calculate distance between two points
 
   const updateDriverLocationOnServer = async location => {
     // console.log('=== Starting location update ===');
@@ -195,10 +249,11 @@ const DriverHomePage = ({ navigation }) => {
     // console.log('Current ride exists:', !!currentRide);
     // console.log('Rider exists:', !!rider);
     // console.log('Socket exists:', !!socket);
-
+    // console.log(currentRide);
     if (!currentRide) {
       // console.log(currentRide);
       // console.log('Early return: no current ride');
+      console.log('here tooo ', currentRide);
       return;
     }
 
@@ -210,7 +265,7 @@ const DriverHomePage = ({ navigation }) => {
       // console.log('Checking currentRide._id:', currentRide._id);
       // console.log('Checking currentRide.user:', currentRide.user);
       // console.log('Checking rider._id:', rider._id);
-
+      console.log('here ', currentRide);
       const payload = {
         location,
         riderId: rider._id,
@@ -219,7 +274,7 @@ const DriverHomePage = ({ navigation }) => {
       };
 
       // console.log('Payload to emit:', payload);
-      // socket.emit('driver-location', payload);
+      socket?.emit('driver-location', payload);
       // console.log('=== Location update completed ===');
     } catch (error) {
       console.error('=== Error in location update ===');
@@ -233,37 +288,6 @@ const DriverHomePage = ({ navigation }) => {
     // await loadAssignedRides();
     setRefreshing(false);
   };
-
-  // const toggleDriverStatus = () => {
-  //   const statusOptions = ['available', 'busy', 'offline'];
-  //   const currentIndex = statusOptions.indexOf(driverStatus);
-  //   const nextIndex = (currentIndex + 1) % statusOptions.length;
-  //   setDriverStatus(statusOptions[nextIndex]);
-  // };
-
-  // const acceptRide = async rideId => {
-  //   try {
-  //     // Update ride status to accepted
-  //     setAssignedRides(prevRides =>
-  //       prevRides.map(ride =>
-  //         ride.id === rideId ? { ...ride, status: 'accepted' } : ride,
-  //       ),
-  //     );
-
-  //     const acceptedRide = assignedRides.find(ride => ride.id === rideId);
-  //     setCurrentRide(acceptedRide);
-  //     setCustomerLocation(acceptedRide.pickupLocation.coordinates);
-  //     setShowNavigationView(true);
-
-  //     Alert.alert(
-  //       'Success',
-  //       'Ride accepted! Navigate to pickupLocation location.',
-  //     );
-  //   } catch (error) {
-  //     console.error('Error accepting ride:', error);
-  //   }
-  // };
-
   const startNavigation = () => {
     if (currentRide && driverLocation) {
       setShowNavigationView(true);
@@ -277,355 +301,228 @@ const DriverHomePage = ({ navigation }) => {
   const callCustomer = phoneNumber => {
     Linking.openURL(`tel:${phoneNumber}`);
   };
-
-  // const generateNavigationHTML = () => {
-  //   const driverLat = driverLocation?.lat || 40.7128;
-  //   const driverLng = location?.lng || -74.006;
-  //   const customerLat = currentRide.destination.coordinates?.lat || 40.72;
-  //   const customerLng = currentRide.destination.coordinates?.lng || -74.01;
-
-  //   return `
-  //   <!DOCTYPE html>
-  //   <html>
-  //   <head>
-  //       <meta charset="utf-8" />
-  //       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  //       <title>Driver Navigation</title>
-  //       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  //       <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-  //       <style>
-  //           body { margin: 0; padding: 0; }
-  //           #map { height: 100vh; width: 100vw; }
-  //           .navigation-info {
-  //               position: absolute;
-  //               top: 10px;
-  //               left: 10px;
-  //               right: 10px;
-  //               background: white;
-  //               padding: 10px;
-  //               border-radius: 8px;
-  //               box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  //               z-index: 1000;
-  //               font-family: Arial, sans-serif;
-  //           }
-  //           .distance-info {
-  //               font-size: 14px;
-  //               color: #666;
-  //               margin-top: 5px;
-  //           }
-  //       </style>
-  //   </head>
-  //   <body>
-  //       <div id="navigation-info" class="navigation-info">
-  //           <div id="instruction">Getting directions...</div>
-  //           <div id="distance" class="distance-info"></div>
-  //       </div>
-  //       <div id="map"></div>
-
-  //       <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  //       <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-  //       <script>
-  //           // Initialize map
-  //           var map = L.map('map').setView([${driverLat}, ${driverLng}], 14);
-
-  //           // Add tile layer
-  //           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',).addTo(map);
-
-  //           // Driver location marker (blue car icon)
-  //           var driverIcon = L.divIcon({
-  //               html: '<div style="background-color: #3B82F6; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; position: relative;"><div style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); font-size: 12px;">🚗</div></div>',
-  //               iconSize: [20, 20],
-  //               className: 'custom-div-icon'
-  //           });
-
-  //           var driverMarker = L.marker([${driverLat}, ${driverLng}], {icon: driverIcon})
-  //               .addTo(map)
-  //               .bindPopup('Your Location');
-
-  //           // Customer location marker (red pin)
-  //           var customerIcon = L.divIcon({
-  //               html: '<div style="background-color: #EF4444; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; position: relative;"><div style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); font-size: 12px;">📍</div></div>',
-  //               iconSize: [20, 20],
-  //               className: 'custom-div-icon'
-  //           });
-
-  //           var customerMarker = L.marker([${customerLat}, ${customerLng}], {icon: customerIcon})
-  //               .addTo(map)
-  //               .bindPopup('Customer pickupLocation Location');
-
-  //           // Add routing
-  //           var routingControl = L.Routing.control({
-  //               waypoints: [
-  //                   L.latLng(${driverLat}, ${driverLng}),
-  //                   L.latLng(${customerLat}, ${customerLng})
-  //               ],
-  //               routeWhileDragging: false,
-  //               createMarker: function() { return null; }, // Don't create default markers
-  //               lineOptions: {
-  //                   styles: [{ color: '#3B82F6', weight: 6, opacity: 0.8 }]
-  //               }
-  //           }).on('routesfound', function(e) {
-  //               var routes = e.routes;
-  //               var summary = routes[0].summary;
-  //               var distance = (summary.totalDistance / 1000).toFixed(1) + ' km';
-  //               var time = Math.round(summary.totalTime / 60) + ' min';
-
-  //               document.getElementById('distance').innerHTML = distance + ' • ' + time;
-
-  //               // Get first instruction
-  //               var instructions = routes[0].instructions;
-  //               if (instructions.length > 0) {
-  //                   document.getElementById('instruction').innerHTML = instructions[0].text;
-  //               }
-  //           }).addTo(map);
-
-  //           // Function to update driver location
-  //           window.updateDriverLocation = function(lat, lng) {
-  //               driverMarker.setLatLng([lat, lng]);
-
-  //               // Update route
-  //               routingControl.setWaypoints([
-  //                   L.latLng(lat, lng),
-  //                   L.latLng(${customerLat}, ${customerLng})
-  //               ]);
-  //           };
-
-  //           // Listen for messages from React Native
-  //           window.addEventListener('message', function(event) {
-  //               try {
-  //                   var data = JSON.parse(event.data);
-  //                   if (data.type === 'updateDriverLocation') {
-  //                       window.updateDriverLocation(data.location.lat, data.location.lng);
-  //                   }
-  //               } catch (e) {
-  //                   console.error('Error parsing message:', e);
-  //               }
-  //           });
-  //       </script>
-  //   </body>
-  //   </html>
-  //   `;
-  // };
-  // const generateNavigationHTML = () => {
-  //   const driverLat = driverLocation?.lat || 40.7128;
-  //   const driverLng = driverLocation?.lng || -74.006;
-  //   const customerLat = currentRide?.destination?.coordinates?.lat || 40.72;
-  //   const customerLng = currentRide?.destination?.coordinates?.lng || -74.01;
-
-  //   return `
-  //   <!DOCTYPE html>
-  //   <html>
-  //   <head>
-  //       <meta charset="utf-8" />
-  //       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  //       <title>Driver Navigation</title>
-  //       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  //       <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-  //       <style>
-  //           body { margin: 0; padding: 0; }
-  //           #map { height: 100vh; width: 100vw; }
-  //           .navigation-info {
-  //               position: absolute;
-  //               top: 10px;
-  //               left: 10px;
-  //               right: 10px;
-  //               background: white;
-  //               padding: 10px;
-  //               border-radius: 8px;
-  //               box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  //               z-index: 1000;
-  //               font-family: Arial, sans-serif;
-  //           }
-  //           .distance-info {
-  //               font-size: 14px;
-  //               color: #666;
-  //               margin-top: 5px;
-  //           }
-  //       </style>
-  //   </head>
-  //   <body>
-  //       <div id="navigation-info" class="navigation-info">
-  //           <div id="instruction">Getting directions...</div>
-  //           <div id="distance" class="distance-info"></div>
-  //       </div>
-  //       <div id="map"></div>
-
-  //       <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  //       <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-  //       <script>
-  //           // Initialize map
-  //           const map = L.map('map').setView([${driverLat}, ${driverLng}], 14);
-
-  //           // Add OpenStreetMap tiles
-  //           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  //             attribution: '© OpenStreetMap contributors'
-  //           }).addTo(map);
-
-  //           // Driver icon (blue)
-  //           const driverIcon = L.divIcon({
-  //               html: '<div style="background-color: #3B82F6; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; position: relative;"><div style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); font-size: 12px;">🚗</div></div>',
-  //               iconSize: [20, 20],
-  //               className: 'custom-div-icon'
-  //           });
-
-  //           // Customer icon (red)
-  //           const customerIcon = L.divIcon({
-  //               html: '<div style="background-color: #EF4444; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; position: relative;"><div style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); font-size: 12px;">📍</div></div>',
-  //               iconSize: [20, 20],
-  //               className: 'custom-div-icon'
-  //           });
-
-  //           // Markers
-  //           const driverMarker = L.marker([${driverLat}, ${driverLng}], { icon: driverIcon })
-  //               .addTo(map)
-  //               .bindPopup("Driver Location");
-
-  //           const customerMarker = L.marker([${customerLat}, ${customerLng}], { icon: customerIcon })
-  //               .addTo(map)
-  //               .bindPopup("Customer Location");
-
-  //           // Routing
-  //           const routingControl = L.Routing.control({
-  //               waypoints: [
-  //                   L.latLng(${driverLat}, ${driverLng}),
-  //                   L.latLng(${customerLat}, ${customerLng})
-  //               ],
-  //               routeWhileDragging: false,
-  //               createMarker: () => null,
-  //               lineOptions: {
-  //                   styles: [{ color: '#3B82F6', weight: 6, opacity: 0.8 }]
-  //               }
-  //           }).on('routesfound', function(e) {
-  //               const summary = e.routes[0].summary;
-  //               const distance = (summary.totalDistance / 1000).toFixed(1) + ' km';
-  //               const time = Math.round(summary.totalTime / 60) + ' min';
-  //               document.getElementById('distance').textContent = distance + ' • ' + time;
-
-  //               const firstInstruction = e.routes[0].instructions?.[0]?.text || 'Head towards the destination';
-  //               document.getElementById('instruction').textContent = firstInstruction;
-  //           }).addTo(map);
-
-  //           // Function to update driver location in real-time
-  //           window.updateDriverLocation = function(lat, lng) {
-  //               driverMarker.setLatLng([lat, lng]);
-  //               routingControl.setWaypoints([
-  //                   L.latLng(lat, lng),
-  //                   L.latLng(${customerLat}, ${customerLng})
-  //               ]);
-  //               map.panTo([lat, lng]);
-  //           };
-
-  //           // Listen for driver location updates from React Native
-  //           window.addEventListener('message', function(event) {
-  //               try {
-  //                   const data = JSON.parse(event.data);
-  //                   if (data.type === 'updateDriverLocation') {
-  //                       window.updateDriverLocation(data.location.lat, data.location.lng);
-  //                   }
-  //               } catch (e) {
-  //                   console.error('Error parsing message from React Native:', e);
-  //               }
-  //           });
-  //       </script>
-  //   </body>
-  //   </html>
-  // `;
-  // };
-  const generateNavigationHTML = () => {
+    const generateNavigationHTML = () => {
     const driverLat = driverLocation?.lat || 40.7128;
     const driverLng = driverLocation?.lng || -74.006;
-    const customerLat = currentRide?.destination?.coordinates?.lat || 40.72;
-    const customerLng = currentRide?.destination?.coordinates?.lng || -74.01;
+    const customerLat = currentRide?.pickupLocation?.coordinates?.lat || 41.72;
+    const customerLng = currentRide?.pickupLocation?.coordinates?.lng || -74.01;
 
     return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Driver Navigation</title>
-      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-      <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-      <style>
-        body { margin: 0; padding: 0; }
-        #map { height: 100vh; width: 100vw; }
-      </style>
-    </head>
-    <body>
-      <div id="map"></div>
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Navigation</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"
+    />
+    
+    <style>
+      body { margin: 0; padding: 0; }
+      #map { height: 100vh; width: 100vw; }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
 
-      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-      <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-      <script>
-        const map = L.map('map').setView([${driverLat}, ${driverLng}], 14);
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script src="https://unpkg.com/lrm-openrouteservice/dist/lrm-openrouteservice.min.js"></script>
+    <script>
+      // Initialize map centered on driver
+      const map = L.map('map').setView([${driverLat}, ${driverLng}], 17);
 
-        // Add map tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+      // Add OpenStreetMap tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        // Driver marker (blue)
-        const driverIcon = L.divIcon({
-          html: '<div style="background-color: #3B82F6; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; position: relative;"><div style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); font-size: 12px;">🚗</div></div>',
-          iconSize: [20, 20],
-          className: 'custom-div-icon'
-        });
+      // Custom driver icon
+      const driverIcon = L.divIcon({
+        html: '<div style="background-color:#3B82F6;width:16px;height:16px;border-radius:50%;border:2px solid white;position:relative;"><div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:12px;">🚗</div></div>',
+        iconSize: [20, 20],
+        className: 'custom-div-icon'
+      });
 
-        // Customer marker (red)
-        const customerIcon = L.divIcon({
-          html: '<div style="background-color: #EF4444; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; position: relative;"><div style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); font-size: 12px;">📍</div></div>',
-          iconSize: [20, 20],
-          className: 'custom-div-icon'
-        });
+      // Custom customer icon
+      const customerIcon = L.divIcon({
+        html: '<div style="background-color:#EF4444;width:16px;height:16px;border-radius:50%;border:2px solid white;position:relative;"><div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:12px;">📍</div></div>',
+        iconSize: [20, 20],
+        className: 'custom-div-icon'
+      });
 
-        const driverMarker = L.marker([${driverLat}, ${driverLng}], { icon: driverIcon })
-          .addTo(map)
-          .bindPopup("Driver Location");
+      // Place markers
+      const driverMarker = L.marker([${driverLat}, ${driverLng}], { icon: driverIcon })
+        .addTo(map)
+        .bindPopup('Driver Location');
+      const customerMarker = L.marker([${customerLat}, ${customerLng}], { icon: customerIcon })
+        .addTo(map)
+        .bindPopup('Customer Location');
 
-        const customerMarker = L.marker([${customerLat}, ${customerLng}], { icon: customerIcon })
-          .addTo(map)
-          .bindPopup("Customer Location");
+      // Routing control using OpenRouteService
+      const routingControl = L.Routing.control({
+        waypoints: [
+          L.latLng(${driverLat}, ${driverLng}),
+          L.latLng(${customerLat}, ${customerLng})
+        ],
+        routeWhileDragging: false,
+        createMarker: () => null,
+        lineOptions: {
+          styles: [{ color: '#3B82F6', weight: 6, opacity: 0.9 }]
+        },
+        show: false
+      }).addTo(map);
 
-        // Route drawing only
-        const routingControl = L.Routing.control({
-          waypoints: [
-            L.latLng(${driverLat}, ${driverLng}),
-            L.latLng(${customerLat}, ${customerLng})
-          ],
-          routeWhileDragging: false,
-          createMarker: () => null,
-          lineOptions: {
-            styles: [{ color: '#3B82F6', weight: 6, opacity: 0.8 }]
-          },
-          show: false // Hides turn-by-turn UI
-        }).addTo(map);
+      // Live driver updates
+      window.updateDriverLocation = (lat, lng) => {
+        driverMarker.setLatLng([lat, lng]);
+        routingControl.setWaypoints([
+          L.latLng(lat, lng),
+          L.latLng(${customerLat}, ${customerLng})
+        ]);
+        map.panTo([lat, lng]);
+      };
 
-        // Live driver location update
-        window.updateDriverLocation = function(lat, lng) {
-          driverMarker.setLatLng([lat, lng]);
-          routingControl.setWaypoints([
-            L.latLng(lat, lng),
-            L.latLng(${customerLat}, ${customerLng})
-          ]);
-          map.panTo([lat, lng]);
-        };
-
-        // Listen for updates from React Native
-        window.addEventListener('message', function(event) {
-          try {
-            console.log('Received driver update:', data);
-            const data = JSON.parse(event.data);
-            if (data.type === 'updateDriverLocation') {
-              window.updateDriverLocation(data.location.lat, data.location.lng);
-            }
-          } catch (e) {
-            console.error('Invalid message:', e);
+      // Listen for React Native messages
+      window.addEventListener('message', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'updateDriverLocation') {
+            window.updateDriverLocation(data.location.lat, data.location.lng);
           }
-        });
-      </script>
-    </body>
-    </html>
+        } catch (e) {
+          console.error('Invalid message:', e);
+        }
+      });
+    </script>
+  </body>
+  </html>
   `;
   };
+// const generateNavigationHTML = () => {
+//   const driverLat = driverLocation?.lat || 40.7128;
+//   const driverLng = driverLocation?.lng || -74.006;
+//   const customerLat = currentRide?.pickupLocation?.coordinates?.lat || 41.72;
+//   const customerLng = currentRide?.pickupLocation?.coordinates?.lng || -74.01;
 
+//   return `
+// <!DOCTYPE html>
+// <html>
+// <head>
+//   <meta charset="utf-8" />
+//   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//   <title>Driver Navigation</title>
+//   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+//   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+//   <style>
+//     body { margin: 0; padding: 0; }
+//     #map { height: 100vh; width: 100vw; }
+//   </style>
+// </head>
+// <body>
+//   <div id="map"></div>
+
+//   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+//   <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+//   <script src="https://unpkg.com/lrm-openrouteservice/dist/lrm-openrouteservice.min.js"></script>
+  
+//   <script>
+//     // Initialize map
+//     const map = L.map('map').setView([${driverLat}, ${driverLng}], 17);
+//     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+//     // Custom icons
+//     const driverIcon = L.divIcon({
+//       html: '<div style="background-color:#3B82F6;width:16px;height:16px;border-radius:50%;border:2px solid white;position:relative;"><div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:12px;">🚗</div></div>',
+//       iconSize: [20, 20],
+//       className: 'custom-div-icon'
+//     });
+
+//     const customerIcon = L.divIcon({
+//       html: '<div style="background-color:#EF4444;width:16px;height:16px;border-radius:50%;border:2px solid white;position:relative;"><div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:12px;">📍</div></div>',
+//       iconSize: [20, 20],
+//       className: 'custom-div-icon'
+//     });
+
+//     // Add markers
+//     const driverMarker = L.marker([${driverLat}, ${driverLng}], { icon: driverIcon })
+//       .addTo(map)
+//       .bindPopup('Driver Location');
+    
+//     const customerMarker = L.marker([${customerLat}, ${customerLng}], { icon: customerIcon })
+//       .addTo(map)
+//       .bindPopup('Customer Location');
+
+//     // ALTERNATIVE APPROACH: Directly use OpenRouteService router
+//     const orsRouter = new L.Routing.OpenRouteService(
+//       '5b3ce3597851110001cf62484eece1b29db34a13972389d9f81b3d9a', // Your API key
+//       {
+//         profile: 'driving-car',
+//         host: 'https://api.openrouteservice.org',
+//         service: 'directions',
+//         api_version: 'v2'
+//       }
+//     );
+
+//     // Routing control with error handling
+//     const routingControl = L.Routing.control({
+//       router: orsRouter,
+//       waypoints: [
+//         L.latLng(${driverLat}, ${driverLng}),
+//         L.latLng(${customerLat}, ${customerLng})
+//       ],
+//       routeWhileDragging: false,
+//       createMarker: () => null,
+//       lineOptions: { styles: [{ color: '#3B82F6', weight: 6, opacity: 0.9 }] },
+//       show: true, // Show the route control panel temporarily for debugging
+//       collapsible: true,
+//       addWaypoints: false
+//     }).addTo(map);
+
+//     // Add event listeners for debugging
+//     routingControl.on('routesfound', (e) => {
+//       console.log('Routes found:', e.routes);
+//     });
+    
+//     routingControl.on('routingerror', (e) => {
+//       console.error('Routing error:', e.error);
+//       alert('Routing failed: ' + e.error.message);
+//     });
+
+//     // Update driver location function
+//     window.updateDriverLocation = (lat, lng) => {
+//       driverMarker.setLatLng([lat, lng]);
+//       routingControl.setWaypoints([
+//         L.latLng(lat, lng),
+//         L.latLng(${customerLat}, ${customerLng})
+//       ]);
+//       map.panTo([lat, lng]);
+//     };
+
+//     // React Native message listener
+//     window.addEventListener('message', (event) => {
+//       try {
+//         const data = JSON.parse(event.data);
+//         if (data.type === 'updateDriverLocation') {
+//           window.updateDriverLocation(data.location.lat, data.location.lng);
+//         }
+//       } catch (e) {
+//         console.error('Invalid message:', e);
+//       }
+//     });
+    
+//     // Debug: Print Leaflet Routing Machine version
+//     console.log('LRM version:', L.Routing.version);
+//     console.log('ORS plugin version:', L.Routing.OpenRouteService ? 'loaded' : 'missing');
+//   </script>
+// </body>
+// </html>
+// `;
+// };
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', style: 'cancel' },
@@ -680,10 +577,10 @@ const DriverHomePage = ({ navigation }) => {
 
             <View className="flex-1 mx-4">
               <Text className="text-lg font-bold text-gray-900">
-                Navigate to Customer
+                {currentRide.userName}
               </Text>
               <Text className="text-sm text-gray-600">
-                {currentRide.userName}
+                Navigating to Customer
               </Text>
             </View>
 
@@ -736,12 +633,22 @@ const DriverHomePage = ({ navigation }) => {
                     { headers: { Authorization: `Bearer ${token}` } },
                   );
                   // console.log(response.data);
+                  // console.log(currentRide._id);
+                  socket?.emit('ride-complete', {
+                    rideId: currentRide._id,
+                    userId: currentRide.user,
+                  });
+
+                  const updatedRides = assignedRides.filter(ride => {
+                    //  console.log(ride._id,currentRide._id)
+                    return ride._id.toString() !== currentRide._id.toString();
+                  });
+                  // console.log(updatedRides);
+                  setAssignedRides(updatedRides);
+                  if (updatedRides.length === 0) setCurrentRide(null);
                   navigation.navigate('Home');
-                  setAssignedRides(
-                    assignedRides.filter(
-                      ride => ride.rideId !== currentRide.rideId,
-                    ),
-                  );
+                  setShowNavigationView(false);
+                  // setCurrentRide(null)
                 } catch (error) {
                   console.log('Arrived Status updation', error);
                 }
@@ -762,20 +669,23 @@ const DriverHomePage = ({ navigation }) => {
       {/* Header */}
       <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-3">
         <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center space-x-3">
-            <View className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center">
-              <Text className="text-white text-lg font-bold">
-                {rider?.username.charAt(0)}
-              </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+            <View className="flex-row items-center space-x-4 gap-3">
+              <View className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center">
+                <Text className="text-white text-lg font-bold">
+                  {rider?.username.charAt(0)}
+                </Text>
+              </View>
+              <View>
+                <Text className="text-xl font-bold text-gray-900">
+                  {rider?.username}
+                </Text>
+                <Text className="text-xs text-gray-600">
+                  RideEasy Driver App
+                </Text>
+              </View>
             </View>
-            <View>
-              <Text className="text-xl font-bold text-gray-900">
-                {rider?.username}
-              </Text>
-              <Text className="text-xs text-gray-600">RideEasy Driver App</Text>
-            </View>
-          </View>
-
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={handleLogout}
             className="px-4 py-2 rounded-lg bg-red-100 border border-red-200"
@@ -899,19 +809,18 @@ const DriverHomePage = ({ navigation }) => {
               {/* Trip Details & Action */}
               <View className="bg-gray-50 rounded-xl p-4">
                 <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center space-x-6">
-                    <View className="items-center">
+                  <View className="flex-col items-center space-x-6">
+                    <View className="items-center ">
                       <Text className="text-sm text-gray-500 mb-1">
-                        Distance
+                        Distance Fare
                       </Text>
-                      <Text className="text-base font-semibold text-gray-900">
+                      {/* <Text className="text-base font-semibold text-gray-900">
                         {currentRide.distance}
-                      </Text>
+                      </Text> */}
                     </View>
                     <View className="items-center">
-                      <Text className="text-sm text-gray-500 mb-1">Fare</Text>
                       <Text className="text-2xl font-bold text-green-600">
-                        ${currentRide.fare}
+                        ₹{currentRide.fare}
                       </Text>
                     </View>
                   </View>
@@ -1013,17 +922,17 @@ const DriverHomePage = ({ navigation }) => {
 
           <View className="flex-row justify-between">
             <View className="items-center flex-1">
-              <Text className="text-2xl font-bold text-blue-600">12</Text>
+              <Text className="text-2xl font-bold text-blue-600">0</Text>
               <Text className="text-sm text-gray-600">Rides</Text>
             </View>
 
             <View className="items-center flex-1">
-              <Text className="text-2xl font-bold text-green-600">$248</Text>
+              <Text className="text-2xl font-bold text-green-600">₹0</Text>
               <Text className="text-sm text-gray-600">Earnings</Text>
             </View>
 
             <View className="items-center flex-1">
-              <Text className="text-2xl font-bold text-purple-600">4.9</Text>
+              <Text className="text-2xl font-bold text-purple-600">5</Text>
               <Text className="text-sm text-gray-600">Rating</Text>
             </View>
           </View>

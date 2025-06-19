@@ -6,6 +6,7 @@ import SignUp from "../screens/auth/SignUp";
 import RiderHomePage from "../screens/Home";
 import MapWithRider from "../screens/MapWithRider";
 import RiderContext from "../context/RiderContext";
+import Profile from "../screens/Profile";
 
 const Stack = createNativeStackNavigator();
 
@@ -27,6 +28,7 @@ const AppNavigator = () => {
         <Stack.Screen name="SignIn" component={SignIn} />
         <Stack.Screen name="SignUp" component={SignUp} />
         <Stack.Screen name="Navigation" component={MapWithRider} />
+        <Stack.Screen name="Profile" component={Profile} />
       </Stack.Navigator>
     </NavigationContainer>
   );
