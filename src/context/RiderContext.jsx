@@ -61,6 +61,7 @@ export const RiderProvider = ({ children }) => {
     }
   }
   useEffect(()=>{
+    console.log("hellooo2")
     getUserDetails();
     getCurrentLocation();
   },[])

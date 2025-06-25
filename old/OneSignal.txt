@@ -1,0 +1,46 @@
+// Import OneSignal Service
+// import OneSignalService from '../services/OneSignalService';
+
+// const ONESIGNAL_APP_ID = 'b1bc24f2-cac7-4677-9f0d-42b0e8f3de2e'; // Replace with your actual App ID
+
+
+  // useEffect(() => {
+  //   initializeOneSignal();
+
+  //   // Cleanup on unmount
+  //   return () => {
+  //     OneSignalService.cleanup();
+  //   };
+  // }, []);
+  // const initializeOneSignal = async () => {
+  //   try {
+  //     console.log('Initializing OneSignal...');
+
+  //     // Initialize OneSignal
+  //     OneSignalService.initialize(ONESIGNAL_APP_ID);
+
+  //     // Request permissions for iOS
+  //     if (Platform.OS === 'ios') {
+  //       OneSignalService.requestPermissions();
+  //     }
+
+  //     // Set user tags for better targeting
+  //     const userId = await AsyncStorage.getItem('userId');
+  //     const userType = 'driver';
+
+  //     if (userId) {
+  //       OneSignalService.sendTags({
+  //         user_id: userId,
+  //         user_type: userType,
+  //         app_version: '1.0.0',
+  //         platform: Platform.OS,
+  //       });
+
+  //       console.log('OneSignal tags set for user:', userId);
+  //     }
+
+  //     console.log('OneSignal initialized successfully for driver app');
+  //   } catch (error) {
+  //     console.error('OneSignal initialization failed:', error);
+  //   }
+  // };

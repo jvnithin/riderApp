@@ -1,6 +1,30 @@
-pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
-plugins { id("com.facebook.react.settings") }
-extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+// pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
+// plugins { id("com.facebook.react.settings") }
+// extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+// rootProject.name = 'RiderCli'
+// include ':app'
+
+// include ':react-native-onesignal'
+// project(':react-native-onesignal').projectDir = file('../node_modules/react-native-onesignal/android')
+
+
+
+// includeBuild('../node_modules/@react-native/gradle-plugin')
+
+
+pluginManagement {
+    includeBuild("../node_modules/@react-native/gradle-plugin")
+}
+
+plugins {
+    id("com.facebook.react.settings")
+}
+
+extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
+    ex.autolinkLibrariesFromCommand()
+}
+
 rootProject.name = 'RiderCli'
 include ':app'
+
 includeBuild('../node_modules/@react-native/gradle-plugin')

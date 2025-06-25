@@ -110,7 +110,7 @@ const SignIn = ({ navigation }) => {
                    placeholderTextColor="#9CA3AF"
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  className={`w-full px-4 py-3 border rounded-lg bg-white ${
+                  className={`w-full px-4 py-3 border text-black rounded-lg bg-white ${
                     errors.email ? 'border-red-300' : 'border-gray-300'
                   }`}
                 />
