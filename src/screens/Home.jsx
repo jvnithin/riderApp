@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AntIcon from 'react-native-vector-icons/AntDesign';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import BackgroundGeolocation from 'react-native-background-geolocation';
 import socketInstance from '../services/socketService';
 import axios from 'axios';
 import RiderContext from '../context/RiderContext';
@@ -44,6 +45,75 @@ const DriverHomePage = ({ navigation }) => {
   const [visitedLocations, setVisitedLocations] = useState({});
   const [proximityStatus, setProximityStatus] = useState({});
   const prevRideId = useRef(null);
+
+
+  useEffect(() => {
+    if (rider && currentRide) {
+      setupBackgroundTracking();
+    }
+  }, [rider, currentRide]);
+  
+
+
+  const setupBackgroundTracking = async () => {
+    const token = await AsyncStorage.getItem('token');
+    if (!token || !rider) return;
+  
+    BackgroundGeolocation.ready({
+      desiredAccuracy: BackgroundGeolocation.DESIRED_ACCURACY_HIGH,
+      distanceFilter: 20,
+      stopOnTerminate: false,
+      startOnBoot: true,
+      foregroundService: true,
+      debug: true, // shows system tray icon on Android
+      logLevel: BackgroundGeolocation.LOG_LEVEL_VERBOSE,
+  
+      // ✅ POST to your backend
+      url: `${apiUrl}/api/location-update`,
+      httpRootProperty: 'location',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+  
+      // Optional – additional POST payload
+      params: {
+        riderId: rider._id,
+        rideId: currentRide?._id ?? '',
+      },
+    }, state => {
+      if (!state.enabled) {
+        BackgroundGeolocation.start(() => {
+          console.log('[BG-GEO] started');
+        });
+      }
+    });
+  
+    BackgroundGeolocation.onLocation(location => {
+      console.log('[BG-GEO] Location:', location.coords);
+  
+      // OPTIONAL: emit via WebSocket too
+      if (socket?.connected && currentRide) {
+        socket.emit('driver-location', {
+          location: {
+            lat: location.coords.latitude,
+            lng: location.coords.longitude,
+          },
+          riderId: rider._id,
+          rideId: currentRide._id,
+          userId: currentRide.user,
+        });
+      }
+    });
+  
+    BackgroundGeolocation.onHttp(response => {
+      console.log('[BG-GEO] HTTP success:', response);
+    });
+  
+    BackgroundGeolocation.onError(error => {
+      console.warn('[BG-GEO] ERROR:', error);
+    });
+  };
+  
 
   // Haversine formula for distance
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -436,7 +506,67 @@ const DriverHomePage = ({ navigation }) => {
     }
   };
 
+<<<<<<< HEAD
   
+=======
+  // Navigation View with integrated DriverMap
+  if (showNavigationView && currentRide) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-900">
+        {/* Navigation Header */}
+        <View className="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
+          <View className="flex-row items-center justify-between">
+            <TouchableOpacity
+              onPress={() => setShowNavigationView(false)}
+              className="p-2"
+            >
+              <AntIcon name="arrowleft" size={24} color="#374151" />
+            </TouchableOpacity>
+
+            <View className="flex-1 mx-4">
+              <Text className="text-lg font-bold text-gray-900">
+                {currentRide.userName}
+              </Text>
+              <Text className="text-sm text-gray-600">
+                Navigating to {currentRide.locations?.length || 0} locations
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => callCustomer(currentRide.userPhone)}
+              className="bg-green-600 p-2 rounded-lg"
+            >
+              <Icon name="call" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Bottom Action Bar */}
+        <View className="bg-white border-t border-gray-200 p-4">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 mr-4">
+              <Text className="text-lg font-bold text-gray-900">
+                Route Optimized
+              </Text>
+              <Text className="text-sm text-gray-600">
+                {currentRide.locations?.length || 0} stops • ₹{currentRide.fare}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              className="bg-blue-600 px-6 py-3 rounded-lg"
+              onPress={completeRide}
+            >
+              <Text className="text-white text-center font-semibold">
+                Complete Ride
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+>>>>>>> 8fa43b5 (code)
 
   // Main Driver Home View
   return (
@@ -548,6 +678,7 @@ const DriverHomePage = ({ navigation }) => {
                   </View>
                 </View>
 
+<<<<<<< HEAD
                 {/* Route Information */}
                 <View className="mb-5">
                   <Text className="text-lg font-semibold text-gray-900 mb-4">
@@ -628,6 +759,29 @@ const DriverHomePage = ({ navigation }) => {
                     />
                   ))}
                 </View>
+=======
+                {/* Route Details */}
+                {currentRide.locations?.map((loc, index) => (
+                  <LocationVisitTracker
+                    key={index}
+                    label={
+                      index === 0
+                        ? 'PICKUP'
+                        : index === currentRide.locations.length - 1
+                        ? 'DESTINATION'
+                        : `STOP ${index}`
+                    }
+                    coords={loc}
+                    distance={proximityStatus[index]?.distance ?? null}
+                    isNearby={proximityStatus[index]?.isNearby}
+                    threshold={PROXIMITY_THRESHOLD}
+                    visited={!!visitedLocations[index]}
+                    visitTime={visitedLocations[index] || null}
+                    onVisit={() => handleMarkVisited(index)}
+                  />
+                ))}
+              </View>
+>>>>>>> 8fa43b5 (code)
 
                 {/* Trip Details & Action */}
                 <View className="bg-gray-50 rounded-xl p-4">

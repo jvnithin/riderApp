@@ -22,7 +22,7 @@ class SocketSingleton {
     if (!this.socket) {
       console.log('Creating socket connection');
 
-      this.socket = io("http://192.168.1.80:8001", {
+      this.socket = io("http://192.168.1.18:8001", {
         transports: ['websocket', 'polling'], 
         autoConnect: true,
       });
