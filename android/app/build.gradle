@@ -110,11 +110,20 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+
+    // Add this configurations block to force dependency versions
+    configurations.all {
+        resolutionStrategy {
+            force 'com.transistorsoft:tslocationmanager:3.17.7'
+        }
+    }
 }
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.9.0'
+    implementation project(':@mauron85_react-native-background-geolocation')
+    implementation 'com.intentfilter:android-permissions:0.1.7'
 
     // No OneSignal SDK dependency
     // Add other dependencies below as needed

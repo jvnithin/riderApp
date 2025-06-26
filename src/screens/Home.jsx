@@ -24,10 +24,13 @@ import DriverMap from '../components/DriverMap';
 import requestNotificationPermission from '../permissions/NotificationPermission';
 import NotificationService from '../services/NotificationService';
 import LocationVisitTracker from '../components/LocationVisitTracker';
+import BackgroundLocationTracker from '../components/BackgroundLocationTracker';
+
 
 const PROXIMITY_THRESHOLD = 50; // meters
 
 const DriverHomePage = ({ navigation }) => {
+  const [permissionsGranted, setPermissionsGranted] = useState(false);
   const { apiUrl, rider, location } = useContext(RiderContext);
   const [driverLocation, setDriverLocation] = useState(null);
   const [assignedRides, setAssignedRides] = useState([]);
@@ -210,30 +213,31 @@ const DriverHomePage = ({ navigation }) => {
     };
   }, []);
 
- useEffect(() => {
-  // Define and immediately invoke an async initialization function
-  const init = async () => {
-    getActiveRides();
+  useEffect(() => {
+    // Define and immediately invoke an async initialization function
+    const init = async () => {
+      getActiveRides();
 
-    try {
-      const json = await AsyncStorage.getItem('visited_locations');
-      if (json) {
-        setVisitedLocations(JSON.parse(json));
+      try {
+        const json = await AsyncStorage.getItem('visited_locations');
+        if (json) {
+          setVisitedLocations(JSON.parse(json));
+        }
+      } catch (error) {
+        console.error(error);
       }
-    } catch (error) {
-      console.error(error);
-    }
-  };
+    };
 
-  init();
-}, []);
-
+    init();
+  }, []);
 
   const requestLocationPermission = async () => {
     try {
       if (Platform.OS === 'android') {
         const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+          PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
           {
             title: 'Location Permission',
             message: 'Driver app needs access to your location for navigation',
@@ -247,6 +251,10 @@ const DriverHomePage = ({ navigation }) => {
           setIsLocationEnabled(true);
           startLocationTracking();
         }
+        const allGranted = Object.values(granted).every(
+          status => status === PermissionsAndroid.RESULTS.GRANTED,
+        );
+        setPermissionsGranted(allGranted);
       } else {
         startLocationTracking();
       }
@@ -428,188 +436,126 @@ const DriverHomePage = ({ navigation }) => {
     }
   };
 
-  // Navigation View with integrated DriverMap
-  if (showNavigationView && currentRide) {
-    return (
-      <SafeAreaView className="flex-1 bg-gray-900">
-        {/* Navigation Header */}
-        <View className="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
-          <View className="flex-row items-center justify-between">
-            <TouchableOpacity
-              onPress={() => setShowNavigationView(false)}
-              className="p-2"
-            >
-              <AntIcon name="arrowleft" size={24} color="#374151" />
-            </TouchableOpacity>
-
-            <View className="flex-1 mx-4">
-              <Text className="text-lg font-bold text-gray-900">
-                {currentRide.userName}
-              </Text>
-              <Text className="text-sm text-gray-600">
-                Navigating to {currentRide.locations?.length || 0} locations
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              onPress={() => callCustomer(currentRide.userPhone)}
-              className="bg-green-600 p-2 rounded-lg"
-            >
-              <Icon name="call" size={20} color="white" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Integrated DriverMap */}
-        {/* <View className="flex-1">
-          {driverLocation && (
-            <DriverMap
-              driverLocation={driverLocation}
-              locations={currentRide.locations || []}
-              height="100%"
-            />
-          )}
-        </View> */}
-
-        {/* Bottom Action Bar */}
-        <View className="bg-white border-t border-gray-200 p-4">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-1 mr-4">
-              <Text className="text-lg font-bold text-gray-900">
-                Route Optimized
-              </Text>
-              <Text className="text-sm text-gray-600">
-                {currentRide.locations?.length || 0} stops • ₹{currentRide.fare}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              className="bg-blue-600 px-6 py-3 rounded-lg"
-              onPress={completeRide}
-            >
-              <Text className="text-white text-center font-semibold">
-                Complete Ride
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  
 
   // Main Driver Home View
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      {/* Header */}
-      <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-3">
-        <View className="flex-row items-center justify-between">
-          <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
-            <View className="flex-row items-center space-x-4 gap-3">
-              <View className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center">
-                <Text className="text-white text-lg font-bold">
-                  {rider?.username?.charAt(0) || 'D'}
-                </Text>
-              </View>
-              <View>
-                <Text className="text-xl font-bold text-gray-900">
-                  {rider?.username || 'Driver'}
-                </Text>
-                <Text className="text-xs text-gray-600">
-                  RideEasy Driver App
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
+    <>
+      {permissionsGranted && (
+        <BackgroundLocationTracker currentRide={currentRide} socket={socket} />
+      )}
 
-          <TouchableOpacity
-            onPress={handleLogout}
-            className="px-4 py-2 rounded-lg bg-red-100 border border-red-200"
-          >
-            <View className="flex-row items-center space-x-2">
-              <Icon name="logout" size={16} color="#DC2626" />
-              <Text className="font-medium text-red-700">Logout</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <ScrollView
-        className="flex-1"
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {/* Location Status */}
-        <View className="bg-white mx-4 mt-4 rounded-xl shadow-sm border border-gray-100 p-4">
+      <SafeAreaView className="flex-1 bg-gray-50">
+        {/* Header */}
+        <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-3">
           <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center space-x-3">
-              <View
-                className={`w-3 h-3 rounded-full ${
-                  isLocationEnabled ? 'bg-green-500' : 'bg-red-500'
-                }`}
-              />
-              <Text className="text-gray-700 font-medium">
-                {isLocationEnabled
-                  ? 'Location Tracking Active'
-                  : 'Location Tracking Disabled'}
-              </Text>
-            </View>
-
-            {!isLocationEnabled && (
-              <TouchableOpacity
-                onPress={requestLocationPermission}
-                className="bg-blue-600 px-3 py-1 rounded-lg"
-              >
-                <Text className="text-white text-sm font-medium">Enable</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-        {/* Current Ride */}
-        {currentRide && (
-          <View className="bg-white mx-4 mt-4 rounded-2xl shadow-md border border-gray-200 overflow-hidden">
-            {/* Header Section */}
-            <View className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-xl font-bold text-gray-900">
-                  Active Ride
-                </Text>
-                <View className="bg-blue-600 px-4 py-2 rounded-full shadow-sm">
-                  <Text className="text-white text-sm font-semibold uppercase tracking-wide">
-                    {currentRide.status}
+            <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+              <View className="flex-row items-center space-x-4 gap-3">
+                <View className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center">
+                  <Text className="text-white text-lg font-bold">
+                    {rider?.username?.charAt(0) || 'D'}
+                  </Text>
+                </View>
+                <View>
+                  <Text className="text-xl font-bold text-gray-900">
+                    {rider?.username || 'Driver'}
+                  </Text>
+                  <Text className="text-xs text-gray-600">
+                    RideEasy Driver App
                   </Text>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
 
-            {/* Main Content */}
-            <View className="px-6 py-5">
-              {/* Driver/User Info Section */}
-              <View className="bg-gray-50 rounded-xl p-4 mb-5">
-                <View className="flex-row items-center">
-                  <View className="bg-blue-100 p-3 rounded-full mr-4">
-                    <FontAwesome name="user" size={20} color="#2563EB" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-lg font-semibold text-gray-900 mb-1">
-                      {currentRide.userName}
-                    </Text>
-                    <Text className="text-gray-600 text-base">
-                      {currentRide.userPhone}
+            <TouchableOpacity
+              onPress={handleLogout}
+              className="px-4 py-2 rounded-lg bg-red-100 border border-red-200"
+            >
+              <View className="flex-row items-center space-x-2">
+                <Icon name="logout" size={16} color="#DC2626" />
+                <Text className="font-medium text-red-700">Logout</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <ScrollView
+          className="flex-1"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {/* Location Status */}
+          <View className="bg-white mx-4 mt-4 rounded-xl shadow-sm border border-gray-100 p-4">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center space-x-3">
+                <View
+                  className={`w-3 h-3 rounded-full ${
+                    isLocationEnabled ? 'bg-green-500' : 'bg-red-500'
+                  }`}
+                />
+                <Text className="text-gray-700 font-medium">
+                  {isLocationEnabled
+                    ? 'Location Tracking Active'
+                    : 'Location Tracking Disabled'}
+                </Text>
+              </View>
+
+              {!isLocationEnabled && (
+                <TouchableOpacity
+                  onPress={requestLocationPermission}
+                  className="bg-blue-600 px-3 py-1 rounded-lg"
+                >
+                  <Text className="text-white text-sm font-medium">Enable</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Current Ride */}
+          {currentRide && (
+            <View className="bg-white mx-4 mt-4 rounded-2xl shadow-md border border-gray-200 overflow-hidden">
+              {/* Header Section */}
+              <View className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-xl font-bold text-gray-900">
+                    Active Ride
+                  </Text>
+                  <View className="bg-blue-600 px-4 py-2 rounded-full shadow-sm">
+                    <Text className="text-white text-sm font-semibold uppercase tracking-wide">
+                      {currentRide.status}
                     </Text>
                   </View>
                 </View>
               </View>
 
-              {/* Route Information */}
-              <View className="mb-5">
-                <Text className="text-lg font-semibold text-gray-900 mb-4">
-                  Route Details ({currentRide.locations?.length || 0} stops)
-                </Text>
+              {/* Main Content */}
+              <View className="px-6 py-5">
+                {/* Driver/User Info Section */}
+                <View className="bg-gray-50 rounded-xl p-4 mb-5">
+                  <View className="flex-row items-center">
+                    <View className="bg-blue-100 p-3 rounded-full mr-4">
+                      <FontAwesome name="user" size={20} color="#2563EB" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-lg font-semibold text-gray-900 mb-1">
+                        {currentRide.userName}
+                      </Text>
+                      <Text className="text-gray-600 text-base">
+                        {currentRide.userPhone}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
 
-                {/* Show all locations */}
-                {/* {currentRide.locations?.map((loc, index) => (
+                {/* Route Information */}
+                <View className="mb-5">
+                  <Text className="text-lg font-semibold text-gray-900 mb-4">
+                    Route Details ({currentRide.locations?.length || 0} stops)
+                  </Text>
+
+                  {/* Show all locations */}
+                  {/* {currentRide.locations?.map((loc, index) => (
                   <View key={index} className="flex-row items-start mb-4">
                     <View
                       className={`${
@@ -661,130 +607,138 @@ const DriverHomePage = ({ navigation }) => {
                   </View>
                 ))} */}
 
-                {/* Route Details */}
-                {currentRide.locations?.map((loc, index) => (
-                  <LocationVisitTracker
-                    key={index}
-                    label={
-                      index === 0
-                        ? 'PICKUP'
-                        : index === currentRide.locations.length - 1
-                        ? 'DESTINATION'
-                        : `STOP ${index}`
-                    }
-                    coords={loc}
-                    distance={proximityStatus[index]?.distance ?? null}
-                    isNearby={proximityStatus[index]?.isNearby}
-                    threshold={PROXIMITY_THRESHOLD}
-                    visited={!!visitedLocations[index]}
-                    visitTime={visitedLocations[index] || null}
-                    onVisit={() => handleMarkVisited(index)}
-                  />
-                ))}
-              </View>
+                  {/* Route Details */}
+                  {currentRide.locations?.map((loc, index) => (
+                    <LocationVisitTracker
+                      key={index}
+                      label={
+                        index === 0
+                          ? 'PICKUP'
+                          : index === currentRide.locations.length - 1
+                          ? 'DESTINATION'
+                          : `STOP ${index}`
+                      }
+                      coords={loc}
+                      distance={proximityStatus[index]?.distance ?? null}
+                      isNearby={proximityStatus[index]?.isNearby}
+                      threshold={PROXIMITY_THRESHOLD}
+                      visited={!!visitedLocations[index]}
+                      visitTime={visitedLocations[index] || null}
+                      onVisit={() => handleMarkVisited(index)}
+                    />
+                  ))}
+                </View>
 
-              {/* Trip Details & Action */}
-              <View className="bg-gray-50 rounded-xl p-4">
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-col items-center space-x-6">
-                    <View className="items-center">
-                      <Text className="text-sm text-gray-500 mb-1">
-                        Total Fare
-                      </Text>
-                      <Text className="text-2xl font-bold text-green-600">
-                        ₹{currentRide.fare}
-                      </Text>
+                {/* Trip Details & Action */}
+                <View className="bg-gray-50 rounded-xl p-4">
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-col items-center space-x-6">
+                      <View className="items-center">
+                        <Text className="text-sm text-gray-500 mb-1">
+                          Total Fare
+                        </Text>
+                        <Text className="text-2xl font-bold text-green-600">
+                          ₹{currentRide.fare}
+                        </Text>
+                      </View>
                     </View>
+
+                    <TouchableOpacity
+                      onPress={handleGoogle}
+                      className="bg-blue-600 px-6 py-3 rounded-xl shadow-sm active:bg-blue-700"
+                    >
+                      <View className="flex-row items-center">
+                        <FontAwesome
+                          name="navigation"
+                          size={16}
+                          color="white"
+                        />
+                        <Text className="text-white font-semibold ml-2">
+                          Navigatee
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
                   </View>
-
-                  <TouchableOpacity
-                    onPress={handleGoogle}
-                    className="bg-blue-600 px-6 py-3 rounded-xl shadow-sm active:bg-blue-700"
-                  >
-                    <View className="flex-row items-center">
-                      <FontAwesome name="navigation" size={16} color="white" />
-                      <Text className="text-white font-semibold ml-2">
-                        Navigatee
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
                 </View>
               </View>
             </View>
-          </View>
-        )}
+          )}
 
-        {/* No Active Rides */}
-        {!currentRide && (
-          <View className="bg-white mx-4 mt-4 mb-6 rounded-xl shadow-sm border border-gray-100 p-6">
-            <View className="items-center">
-              <View className="w-16 h-16 bg-gray-100 rounded-full items-center justify-center mb-4">
-                <Icon name="directions-car" size={32} color="#6B7280" />
+          {/* No Active Rides */}
+          {!currentRide && (
+            <View className="bg-white mx-4 mt-4 mb-6 rounded-xl shadow-sm border border-gray-100 p-6">
+              <View className="items-center">
+                <View className="w-16 h-16 bg-gray-100 rounded-full items-center justify-center mb-4">
+                  <Icon name="directions-car" size={32} color="#6B7280" />
+                </View>
+                <Text className="text-lg font-bold text-gray-900 mb-2">
+                  No Active Rides
+                </Text>
+                <Text className="text-gray-600 text-center">
+                  You're ready to receive ride requests. Make sure your status
+                  is set to "Available".
+                </Text>
               </View>
-              <Text className="text-lg font-bold text-gray-900 mb-2">
-                No Active Rides
-              </Text>
-              <Text className="text-gray-600 text-center">
-                You're ready to receive ride requests. Make sure your status is
-                set to "Available".
-              </Text>
             </View>
-          </View>
-        )}
+          )}
 
-        {/* Map Overview */}
-        {isLocationEnabled && driverLocation && (
-          <View className="bg-white mx-4 mt-4 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <View className="p-4 border-b border-gray-100">
-              <Text className="text-lg font-bold text-gray-900">
-                Your Location
-              </Text>
-              <Text className="text-sm text-gray-600">
-                Lat: {driverLocation.lat.toFixed(4)}, Lng:{' '}
-                {driverLocation.lng.toFixed(4)}
-              </Text>
-            </View>
+          {/* Map Overview */}
+          {isLocationEnabled && driverLocation && (
+            <View className="bg-white mx-4 mt-4 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <View className="p-4 border-b border-gray-100">
+                <Text className="text-lg font-bold text-gray-900">
+                  Your Location
+                </Text>
+                <Text className="text-sm text-gray-600">
+                  Lat: {driverLocation.lat.toFixed(4)}, Lng:{' '}
+                  {driverLocation.lng.toFixed(4)}
+                </Text>
+              </View>
 
-            {/* <View style={{ height: 250 }}>
+              {/* <View style={{ height: 250 }}>
               <DriverMap
                 driverLocation={driverLocation}
                 locations={currentRide?.locations || []}
                 height={250}
               />
             </View> */}
+            </View>
+          )}
+
+          {/* Driver Stats */}
+          <View className="bg-white mx-4 mt-4 mb-6 rounded-xl shadow-sm border border-gray-100 p-4">
+            <Text className="text-lg font-bold text-gray-900 mb-4">
+              Today's Stats
+            </Text>
+
+            <View className="flex-row justify-between">
+              <View className="items-center flex-1">
+                <Text className="text-2xl font-bold text-blue-600">
+                  {assignedRides.length}
+                </Text>
+                <Text className="text-sm text-gray-600">Rides</Text>
+              </View>
+
+              <View className="items-center flex-1">
+                <Text className="text-2xl font-bold text-green-600">
+                  ₹
+                  {assignedRides.reduce(
+                    (sum, ride) => sum + (ride.fare || 0),
+                    0,
+                  )}
+                </Text>
+                <Text className="text-sm text-gray-600">Earnings</Text>
+              </View>
+
+              <View className="items-center flex-1">
+                <Text className="text-2xl font-bold text-purple-600">5.0</Text>
+                <Text className="text-sm text-gray-600">Rating</Text>
+              </View>
+            </View>
           </View>
-        )}
-
-        {/* Driver Stats */}
-        <View className="bg-white mx-4 mt-4 mb-6 rounded-xl shadow-sm border border-gray-100 p-4">
-          <Text className="text-lg font-bold text-gray-900 mb-4">
-            Today's Stats
-          </Text>
-
-          <View className="flex-row justify-between">
-            <View className="items-center flex-1">
-              <Text className="text-2xl font-bold text-blue-600">
-                {assignedRides.length}
-              </Text>
-              <Text className="text-sm text-gray-600">Rides</Text>
-            </View>
-
-            <View className="items-center flex-1">
-              <Text className="text-2xl font-bold text-green-600">
-                ₹
-                {assignedRides.reduce((sum, ride) => sum + (ride.fare || 0), 0)}
-              </Text>
-              <Text className="text-sm text-gray-600">Earnings</Text>
-            </View>
-
-            <View className="items-center flex-1">
-              <Text className="text-2xl font-bold text-purple-600">5.0</Text>
-              <Text className="text-sm text-gray-600">Rating</Text>
-            </View>
-          </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 };
 

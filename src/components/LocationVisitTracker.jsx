@@ -21,7 +21,7 @@ const LocationVisitTracker = ({
   threshold,
   onVisit,
 }) => {
-    console.log(visited,coords)
+    // console.log(visited,coords)
     return(
   <View style={styles.container}>
     <View style={styles.info}>

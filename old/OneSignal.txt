@@ -44,3 +44,76 @@
   //     console.error('OneSignal initialization failed:', error);
   //   }
   // };
+
+
+
+
+Home.jsx
+// Navigation View with integrated DriverMap
+  // if (showNavigationView && currentRide) {
+  //   return (
+  //     <SafeAreaView className="flex-1 bg-gray-900">
+  //       {/* Navigation Header */}
+  //       <View className="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
+  //         <View className="flex-row items-center justify-between">
+  //           <TouchableOpacity
+  //             onPress={() => setShowNavigationView(false)}
+  //             className="p-2"
+  //           >
+  //             <AntIcon name="arrowleft" size={24} color="#374151" />
+  //           </TouchableOpacity>
+
+  //           <View className="flex-1 mx-4">
+  //             <Text className="text-lg font-bold text-gray-900">
+  //               {currentRide.userName}
+  //             </Text>
+  //             <Text className="text-sm text-gray-600">
+  //               Navigating to {currentRide.locations?.length || 0} locations
+  //             </Text>
+  //           </View>
+
+  //           <TouchableOpacity
+  //             onPress={() => callCustomer(currentRide.userPhone)}
+  //             className="bg-green-600 p-2 rounded-lg"
+  //           >
+  //             <Icon name="call" size={20} color="white" />
+  //           </TouchableOpacity>
+  //         </View>
+  //       </View>
+
+  //       {/* Integrated DriverMap */}
+  //       {/* <View className="flex-1">
+  //         {driverLocation && (
+  //           <DriverMap
+  //             driverLocation={driverLocation}
+  //             locations={currentRide.locations || []}
+  //             height="100%"
+  //           />
+  //         )}
+  //       </View> */}
+
+  //       {/* Bottom Action Bar */}
+  //       <View className="bg-white border-t border-gray-200 p-4">
+  //         <View className="flex-row items-center justify-between">
+  //           <View className="flex-1 mr-4">
+  //             <Text className="text-lg font-bold text-gray-900">
+  //               Route Optimized
+  //             </Text>
+  //             <Text className="text-sm text-gray-600">
+  //               {currentRide.locations?.length || 0} stops • ₹{currentRide.fare}
+  //             </Text>
+  //           </View>
+
+  //           <TouchableOpacity
+  //             className="bg-blue-600 px-6 py-3 rounded-lg"
+  //             onPress={completeRide}
+  //           >
+  //             <Text className="text-white text-center font-semibold">
+  //               Complete Ride
+  //             </Text>
+  //           </TouchableOpacity>
+  //         </View>
+  //       </View>
+  //     </SafeAreaView>
+  //   );
+  // }

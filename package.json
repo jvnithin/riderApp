@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@mauron85/react-native-background-geolocation": "^0.6.3",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/hooks": "^100.1.0",
     "@react-native/new-app-screen": "0.80.0",
