@@ -13,6 +13,13 @@
 
 
 pluginManagement {
+    // repositories {
+    //     google()
+    //     mavenCentral()
+    //     maven { url 'https://maven.transistorsoft.com/release' }
+    //     maven { url 'https://jitpack.io' }
+    //     gradlePluginPortal()
+    // }
     includeBuild("../node_modules/@react-native/gradle-plugin")
 }
 
@@ -27,13 +34,17 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 rootProject.name = 'RiderCli'
 include ':app'
 
-include ':@mauron85_react-native-background-geolocation-common'
-project(':@mauron85_react-native-background-geolocation-common').projectDir =
-    new File(rootProject.projectDir, '../node_modules/@mauron85/react-native-background-geolocation/android/common')
-
-include ':@mauron85_react-native-background-geolocation'
-project(':@mauron85_react-native-background-geolocation').projectDir =
-    new File(rootProject.projectDir, '../node_modules/@mauron85/react-native-background-geolocation/android/lib')
 
 
 includeBuild('../node_modules/@react-native/gradle-plugin')
+
+// dependencyResolutionManagement {
+//     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+//     repositories {
+//         jcenter()            // 🛠 Add this to resolve com.intentfilter:android-permissions:0.1.7
+//         google()
+//         mavenCentral()
+//         maven { url 'https://jitpack.io' }
+//     }
+// }
+

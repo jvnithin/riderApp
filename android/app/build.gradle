@@ -115,16 +115,19 @@ android {
     configurations.all {
         resolutionStrategy {
             force 'com.transistorsoft:tslocationmanager:3.17.7'
+            force 'com.transistorsoft:tsbackgroundfetch:0.6.0'
         }
     }
 }
 
 dependencies {
+    implementation fileTree(dir: "libs", include: ["*.jar"])
+
+    // ✅ Core React Native dependency
+    implementation "com.facebook.react:react-native:+"
+
+    // ✅ Your existing dependencies
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.9.0'
-    implementation project(':@mauron85_react-native-background-geolocation')
-    implementation 'com.intentfilter:android-permissions:0.1.7'
-
-    // No OneSignal SDK dependency
-    // Add other dependencies below as needed
+  
 }

@@ -25,7 +25,7 @@ import DriverMap from '../components/DriverMap';
 import requestNotificationPermission from '../permissions/NotificationPermission';
 import NotificationService from '../services/NotificationService';
 import LocationVisitTracker from '../components/LocationVisitTracker';
-import BackgroundLocationTracker from '../components/BackgroundLocationTracker';
+// import BackgroundLocationTracker from '../components/BackgroundLocationTracker';
 
 
 const PROXIMITY_THRESHOLD = 50; // meters
@@ -506,9 +506,6 @@ const DriverHomePage = ({ navigation }) => {
     }
   };
 
-<<<<<<< HEAD
-  
-=======
   // Navigation View with integrated DriverMap
   if (showNavigationView && currentRide) {
     return (
@@ -566,14 +563,13 @@ const DriverHomePage = ({ navigation }) => {
       </SafeAreaView>
     );
   }
->>>>>>> 8fa43b5 (code)
 
   // Main Driver Home View
   return (
     <>
-      {permissionsGranted && (
+      {/* {permissionsGranted && (
         <BackgroundLocationTracker currentRide={currentRide} socket={socket} />
-      )}
+      )} */}
 
       <SafeAreaView className="flex-1 bg-gray-50">
         {/* Header */}
@@ -677,89 +673,11 @@ const DriverHomePage = ({ navigation }) => {
                     </View>
                   </View>
                 </View>
-
-<<<<<<< HEAD
-                {/* Route Information */}
                 <View className="mb-5">
                   <Text className="text-lg font-semibold text-gray-900 mb-4">
                     Route Details ({currentRide.locations?.length || 0} stops)
                   </Text>
 
-                  {/* Show all locations */}
-                  {/* {currentRide.locations?.map((loc, index) => (
-                  <View key={index} className="flex-row items-start mb-4">
-                    <View
-                      className={`${
-                        index === 0
-                          ? 'bg-green-100'
-                          : index === currentRide.locations.length - 1
-                          ? 'bg-red-100'
-                          : 'bg-blue-100'
-                      } p-2 rounded-full mr-4 mt-1`}
-                    >
-                      <FontAwesome
-                        name={
-                          index === 0
-                            ? 'map-marker'
-                            : index === currentRide.locations.length - 1
-                            ? 'flag-checkered'
-                            : 'circle'
-                        }
-                        size={16}
-                        color={d
-                          index === 0
-                            ? '#059669'
-                            : index === currentRide.locations.length - 1
-                            ? '#DC2626'
-                            : '#2563EB'
-                        }
-                      />
-                    </View>
-                    <View className="flex-1">
-                      <Text
-                        className={`text-sm font-medium mb-1 ${
-                          index === 0
-                            ? 'text-green-700'
-                            : index === currentRide.locations.length - 1
-                            ? 'text-red-700'
-                            : 'text-blue-700'
-                        }`}
-                      >
-                        {index === 0
-                          ? 'PICKUP'
-                          : index === currentRide.locations.length - 1
-                          ? 'DESTINATION'
-                          : `STOP ${index}`}
-                      </Text>
-                      <Text className="text-gray-800 text-base leading-relaxed">
-                        {loc.lat?.toFixed(4)}, {loc.lng?.toFixed(4)}
-                      </Text>
-                    </View>
-                  </View>
-                ))} */}
-
-                  {/* Route Details */}
-                  {currentRide.locations?.map((loc, index) => (
-                    <LocationVisitTracker
-                      key={index}
-                      label={
-                        index === 0
-                          ? 'PICKUP'
-                          : index === currentRide.locations.length - 1
-                          ? 'DESTINATION'
-                          : `STOP ${index}`
-                      }
-                      coords={loc}
-                      distance={proximityStatus[index]?.distance ?? null}
-                      isNearby={proximityStatus[index]?.isNearby}
-                      threshold={PROXIMITY_THRESHOLD}
-                      visited={!!visitedLocations[index]}
-                      visitTime={visitedLocations[index] || null}
-                      onVisit={() => handleMarkVisited(index)}
-                    />
-                  ))}
-                </View>
-=======
                 {/* Route Details */}
                 {currentRide.locations?.map((loc, index) => (
                   <LocationVisitTracker
@@ -781,7 +699,6 @@ const DriverHomePage = ({ navigation }) => {
                   />
                 ))}
               </View>
->>>>>>> 8fa43b5 (code)
 
                 {/* Trip Details & Action */}
                 <View className="bg-gray-50 rounded-xl p-4">
